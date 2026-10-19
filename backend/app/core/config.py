@@ -37,6 +37,15 @@ class Settings(BaseSettings):
         extra="ignore"
     )
 
+    @field_validator("DATABASE_URL", mode="before")
+    @classmethod
+    def use_psycopg3_for_postgresql(cls, value: str) -> str:
+        if isinstance(value, str):
+            for scheme in ("postgres://", "postgresql://"):
+                if value.startswith(scheme):
+                    return "postgresql+psycopg://" + value[len(scheme):]
+        return value
+
     @field_validator("JWT_SECRET_KEY")
     @classmethod
     def validate_jwt_secret(cls, value: str) -> str:
