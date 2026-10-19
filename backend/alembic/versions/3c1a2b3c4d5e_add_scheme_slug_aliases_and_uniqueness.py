@@ -45,6 +45,16 @@ def upgrade() -> None:
     # Validate canonical redirect targets and deactivate duplicate schemes before redirect assignment
     for dup_id, (_slug, canonical_target_id) in archived_overrides.items():
         if canonical_target_id is not None:
+            # Fresh databases have no historical scheme rows to archive. Keep the
+            # migration usable before catalogue data has been seeded, while still
+            # validating the target whenever the duplicate row is present.
+            duplicate = conn.execute(
+                text("SELECT id FROM schemes WHERE id = :dup_id;"),
+                {"dup_id": dup_id}
+            ).fetchone()
+            if not duplicate:
+                continue
+
             # 1. Target scheme must exist, be active, and must NOT be redirected itself
             target = conn.execute(
                 text("SELECT id, is_active, canonical_scheme_id FROM schemes WHERE id = :target_id;"),
