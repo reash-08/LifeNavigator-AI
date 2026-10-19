@@ -1,15 +1,80 @@
 # Virtual environment
+.venv/
 backend/.venv/
+env/
+venv/
 
 # Python
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.uv-cache/
+.coverage
+htmlcov/
 
-# Environment variables
+# Node & Frontend
+node_modules/
+frontend/node_modules/
+frontend/dist/
+dist/
+.eslintcache
+
+# Environment variables & secrets
+.env
+.env.*
+!.env.example
+!.env.prod.example
 backend/.env
 
-# VS Code
+# Local Databases & Backups
+*.db
+*.db.bak
+*.sqlite
+*.sqlite3
+backups/
+*.dump
+backend/backups/
+
+# VS Code & IDEs
 .vscode/
+.idea/
 
 # Logs
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Temporary & Generated Artifacts
+*.bak
+*.docx
+*.tmp
+chrometemp/
+docs/chrometemp/
+docs/README.md
+docs/screenshots/
+docs/screenshot_home.png
+
+# Root Coursework & Scratch Scripts
+/scripts/
+/schemes_*.py
+/catalog_builder_helpers.py
+
+# Temporary Root Dumps & Drafts
+/all_active_schemes_dump.json
+/audit_schemes_raw.json
+/audit_two_profile_results.json
+/dry_run_relink_plan.json
+/mismatched_sources_detail.json
+/final_readiness_report.md
+/production_readiness_report.md
+/scheme_comparison_table.md
+
+# Temporary Test Outputs & Audit Artifacts
+url_check_results.json
+backend/scripts/url_check_results.json
+/data/two_profile_audit_results.json
+/data/schemes/audit_verified_schemes.*
+

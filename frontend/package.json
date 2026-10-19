@@ -1,0 +1,9 @@
+{
+  "name": "lifenavigator-ai-frontend",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": { "dev": "vite --host 0.0.0.0", "build": "vite build", "lint": "eslint .", "test": "node --test" },
+  "dependencies": { "vite": "^6.1.0" },
+  "devDependencies": { "eslint": "^9.20.0" }
+}

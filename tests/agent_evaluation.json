@@ -1,0 +1,33 @@
+[
+  {
+    "id": "karnataka_farm_discovery",
+    "query": "Find farmer solar pump support in Karnataka",
+    "expected_intent": "discovery",
+    "expected_scheme_terms": ["solar pump", "farmer"],
+    "requires_cited_source": true
+  },
+  {
+    "id": "karnataka_farm_eligibility",
+    "query": "Am I eligible for farmer solar pump support in Karnataka?",
+    "expected_intent": "eligibility",
+    "expected_scheme_terms": ["solar pump"],
+    "requires_cited_source": true,
+    "eligibility_authority": "structured_rules_only",
+    "expected_eligibility": "eligible"
+  },
+  {
+    "id": "ambiguous_request",
+    "query": "help",
+    "expected_intent": "discovery",
+    "expected_clarification": true,
+    "expected_insufficient_evidence": true
+  },
+  {
+    "id": "unsupported_claim",
+    "query": "Find a moon colony relocation subsidy",
+    "expected_intent": "discovery",
+    "expected_insufficient_evidence": true,
+    "expected_no_schemes": true,
+    "expected_no_sources": true
+  }
+]
