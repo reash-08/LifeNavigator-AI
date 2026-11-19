@@ -73,6 +73,7 @@ Copy `backend/.env.example` to `backend/.env`.
 | `OPENAI_API_KEY` | Optional OpenAI key | (optional) |
 | `GEMINI_API_KEY` | Optional Google Gemini key | (optional) |
 | `SYNC_INTERVAL_HOURS` | Interval for background source sync | `24` |
+| `SCHEDULER_ENABLED` | Enable the background source sync worker | `true` |
 | `RAG_SIMILARITY_THRESHOLD` | Minimum similarity threshold | `0.1` |
 | `HYBRID_ALPHA` | Semantic vs lexical weight balance (0.0 to 1.0) | `0.6` |
 

@@ -20,8 +20,23 @@ async function api(path, options = {}) {
   if (response.status === 401 && state.token) { logout(false); throw new Error('Your session has expired. Please sign in again.'); }
   if (!response.ok) {
     let message = `Request failed (${response.status})`;
-    try { const data = await response.json(); message = data.detail || message; } catch { /* use status */ }
-    throw new Error(Array.isArray(message) ? message.map((item) => item.msg).join(', ') : message);
+    let details = [];
+    try {
+      const data = await response.json();
+      if (Array.isArray(data.detail)) {
+        details = data.detail;
+        message = data.detail.map((item) => {
+          const field = (item.loc || []).filter((part) => part !== 'body').join(' → ');
+          return `${field ? `${field}: ` : ''}${item.msg}`;
+        }).join('\n');
+      } else {
+        message = data.detail || message;
+      }
+    } catch { /* use status */ }
+    const error = new Error(message);
+    error.details = details;
+    error.status = response.status;
+    throw error;
   }
   if (response.status === 204) return null;
   return response.json();
@@ -542,12 +557,49 @@ function renderAdminSchemes() {
 function renderSchemeEditor() {
   const target = document.querySelector('#scheme-editor'); if (!target) return;
   const scheme = state.editingScheme || {};
-  target.innerHTML = `<section class="admin-card"><div class="section-heading"><div><span class="eyebrow">${scheme.id ? 'EDIT SCHEME' : 'NEW SCHEME'}</span><h2>${scheme.id ? escapeHtml(scheme.name) : 'Create scheme record'}</h2></div><button class="text-button" id="close-scheme-editor">Close</button></div><form id="scheme-editor-form" class="admin-form">${adminInput('Scheme name', 'name', scheme.name, 'text', 'required maxlength="255"')}<label>Description<textarea name="description" required>${escapeHtml(scheme.description || '')}</textarea></label><label>Benefits<textarea name="benefit" required>${escapeHtml(scheme.benefit || '')}</textarea></label>${adminInput('Category', 'category', scheme.category)}${adminInput('Subcategory', 'subcategory', scheme.subcategory)}${adminInput('Beneficiary groups (comma separated)', 'beneficiary_groups', (scheme.beneficiary_groups || []).join(', '))}${adminInput('State / region', 'state', scheme.state)}<label>Government level<select name="government_level"><option value="">Not specified</option>${['central', 'state', 'ut', 'local'].map((value) => `<option ${scheme.government_level === value ? 'selected' : ''}>${value}</option>`).join('')}</select></label>${adminInput('Ministry', 'ministry', scheme.ministry)}${adminInput('Department', 'department', scheme.department)}<label>Required documents<textarea name="required_documents">${escapeHtml(scheme.required_documents || '')}</textarea></label><label>How to apply (only source-backed steps)<textarea name="application_process">${escapeHtml(scheme.application_process || '')}</textarea></label>${adminInput('Official information URL', 'source_url', scheme.source_url, 'url')}${adminInput('Source name', 'source_name', scheme.source_name)}${adminInput('Official application URL', 'application_url', scheme.application_url, 'url')}<label>Source status<select name="verification_status">${['unverified', 'pending', 'verified', 'review_needed', 'expired', 'rejected'].map((value) => `<option ${scheme.verification_status === value ? 'selected' : ''}>${value}</option>`).join('')}</select></label><label>Eligibility verification<select name="eligibility_verification_status">${['unverified', 'not_confirmed', 'verified'].map((value) => `<option ${((scheme.eligibility_verification_status || 'unverified') === value) ? 'selected' : ''}>${value}</option>`).join('')}</select></label><label class="admin-check"><input type="checkbox" name="is_active" ${scheme.is_active === false ? '' : 'checked'}> Active in discovery</label><div class="admin-form-actions"><button class="button primary">Save scheme</button></div></form></section>`;
+  target.innerHTML = `<section class="admin-card"><div class="section-heading"><div><span class="eyebrow">${scheme.id ? 'EDIT SCHEME' : 'NEW SCHEME'}</span><h2>${scheme.id ? escapeHtml(scheme.name) : 'Create scheme record'}</h2></div><button class="text-button" id="close-scheme-editor">Close</button></div><form id="scheme-editor-form" class="admin-form">${adminInput('Scheme name', 'name', scheme.name, 'text', 'required maxlength="255"')}<label>Description <span class="required-star">*</span><textarea name="description" required minlength="1">${escapeHtml(scheme.description || '')}</textarea></label><label>Benefits <span class="required-star">*</span><textarea name="benefit" required minlength="1">${escapeHtml(scheme.benefit || '')}</textarea></label>${adminInput('Category', 'category', scheme.category)}${adminInput('Subcategory', 'subcategory', scheme.subcategory)}${adminInput('Beneficiary groups (comma separated)', 'beneficiary_groups', (scheme.beneficiary_groups || []).join(', '))}${adminInput('State / region', 'state', scheme.state)}<label>Government level<select name="government_level"><option value="">Not specified</option>${['central', 'state', 'ut', 'local'].map((value) => `<option ${scheme.government_level === value ? 'selected' : ''}>${value}</option>`).join('')}</select></label>${adminInput('Ministry', 'ministry', scheme.ministry)}${adminInput('Department', 'department', scheme.department)}<label>Required documents<textarea name="required_documents">${escapeHtml(scheme.required_documents || '')}</textarea></label><label>How to apply (only source-backed steps)<textarea name="application_process">${escapeHtml(scheme.application_process || '')}</textarea></label>${adminInput('Official information URL', 'source_url', scheme.source_url, 'url')}${adminInput('Source name', 'source_name', scheme.source_name)}${adminInput('Official application URL', 'application_url', scheme.application_url, 'url')}<label>Source status<select name="verification_status">${['unverified', 'pending', 'verified', 'review_needed', 'expired', 'rejected'].map((value) => `<option ${scheme.verification_status === value ? 'selected' : ''}>${value}</option>`).join('')}</select></label><label>Eligibility verification<select name="eligibility_verification_status">${['unverified', 'not_confirmed', 'verified'].map((value) => `<option ${((scheme.eligibility_verification_status || 'unverified') === value) ? 'selected' : ''}>${value}</option>`).join('')}</select></label><label class="admin-check"><input type="checkbox" name="is_active" ${scheme.is_active === false ? '' : 'checked'}> Active in discovery</label><div id="scheme-form-error" class="notice" hidden style="margin-bottom:10px;"></div><div class="admin-form-actions"><button class="button primary" id="save-scheme-btn">Save scheme</button></div></form></section>`;
   target.querySelector('#close-scheme-editor').onclick = () => { target.innerHTML = ''; };
   target.querySelector('#scheme-editor-form').onsubmit = async (event) => {
-    event.preventDefault(); const values = Object.fromEntries(new FormData(event.currentTarget));
-    const payload = { ...values, beneficiary_groups: values.beneficiary_groups ? values.beneficiary_groups.split(',').map((item) => item.trim()).filter(Boolean) : [], is_active: event.currentTarget.elements.is_active.checked, min_age: scheme.min_age ?? null, max_age: scheme.max_age ?? null, education: scheme.education ?? null, employment_status: scheme.employment_status ?? null, max_annual_income: scheme.max_annual_income ?? null, application_deadline: scheme.application_deadline || null, verified_at: scheme.verified_at || null };
-    try { await api(scheme.id ? `/api/schemes/${scheme.id}` : '/api/schemes', { method: scheme.id ? 'PUT' : 'POST', body: JSON.stringify(payload) }); notice('Scheme record saved.', 'success'); await renderAdmin(); } catch (error) { notice(error.message); }
+    event.preventDefault();
+    const form = event.currentTarget;
+    const values = Object.fromEntries(new FormData(form));
+    const payload = {
+      ...values,
+      beneficiary_groups: values.beneficiary_groups ? values.beneficiary_groups.split(',').map((item) => item.trim()).filter(Boolean) : [],
+      is_active: form.elements.is_active.checked,
+      min_age: scheme.min_age ?? null,
+      max_age: scheme.max_age ?? null,
+      education: scheme.education ?? null,
+      employment_status: scheme.employment_status ?? null,
+      max_annual_income: scheme.max_annual_income ?? null,
+      application_deadline: scheme.application_deadline || null,
+      verified_at: scheme.verified_at || null,
+    };
+    // Omit slug if empty so the backend auto-generates it
+    if (!payload.slug) delete payload.slug;
+
+    const saveBtn = target.querySelector('#save-scheme-btn') || form.querySelector('.button.primary');
+    const formError = target.querySelector('#scheme-form-error');
+    if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Saving…'; }
+    if (formError) formError.hidden = true;
+
+    try {
+      await api(scheme.id ? `/api/schemes/${scheme.id}` : '/api/schemes', { method: scheme.id ? 'PUT' : 'POST', body: JSON.stringify(payload) });
+      notice('Scheme record saved successfully.', 'success');
+      await renderAdmin();
+    } catch (error) {
+      // Show error both in the global notice AND inline in the form (visible without scrolling)
+      notice(error.message);
+      if (formError) {
+        formError.textContent = error.status === 409
+          ? error.message
+          : `Please correct the following: ${error.message}`;
+        formError.className = 'notice error';
+        formError.hidden = false;
+        formError.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+      if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Save scheme'; }
+    }
   };
 }
 

@@ -11,6 +11,7 @@ sys.path.insert(0, str(BACKEND_DIR))
 os.environ["DATABASE_URL"] = f"sqlite:///{TEST_DATABASE.as_posix()}"
 os.environ["JWT_SECRET_KEY"] = "test-secret-that-is-longer-than-thirty-two-characters"
 os.environ["ADMIN_EMAILS"] = "admin@example.com"
+os.environ["SCHEDULER_ENABLED"] = "false"
 
 
 @pytest.fixture(autouse=True)

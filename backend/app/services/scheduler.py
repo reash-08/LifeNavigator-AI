@@ -113,6 +113,10 @@ def _scheduler_loop() -> None:
 def start_scheduler() -> None:
     """Start the background scheduler thread."""
     global _worker_thread
+    if not settings.SCHEDULER_ENABLED:
+        logger.info("Scheme scheduler is disabled by configuration.")
+        _scheduler_state["is_running"] = False
+        return
     if _worker_thread is not None and _worker_thread.is_alive():
         return
 

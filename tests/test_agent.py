@@ -11,6 +11,7 @@ from app.models.scheme import Scheme
 from app.models.scheme_source import SchemeSource
 from app.services.agent import extract_intent, run_agent
 from app.services.document_ingestion import ingest_document
+from app.services.explanation import GroundedTemplateProvider
 from main import app
 
 
@@ -233,3 +234,70 @@ def test_provider_only_receives_source_backed_excerpts():
     with SessionLocal() as db:
         body = run_agent(db, query="Find farmer solar pump grant in Karnataka", profile=None, provider=CaptureProvider())
     assert body.answer == "Grounded answer"
+
+
+def test_grounded_template_groups_source_excerpts_by_scheme_without_inventing_sections():
+    answer = GroundedTemplateProvider().explain(
+        question="Find support",
+        evidence=[
+            {"scheme_name": "Scheme One", "text": "Annual support is recorded.", "source_name": "Official Portal"},
+            {"scheme_name": "Scheme Two", "text": "Applications are accepted online.", "source_name": "Department"},
+        ],
+    )
+
+    assert "# Scheme One" in answer
+    assert "# Scheme Two" in answer
+    assert "- Annual support is recorded. (Source: Official Portal)" in answer
+    assert "- Applications are accepted online. (Source: Department)" in answer
+    assert "Benefits" not in answer
+
+
+def test_admin_can_submit_scheme_form_payload_without_a_slug():
+    payload = {
+        "name": "Accessible Student Support",
+        "description": "Support information for eligible students.",
+        "benefit": "The recorded benefit is education support.",
+        "category": "Education & Learning",
+        "subcategory": "Student support",
+        "beneficiary_groups": ["students", "persons with disabilities"],
+        "state": "",
+        "government_level": "central",
+        "ministry": "",
+        "department": "",
+        "required_documents": "",
+        "application_process": "",
+        "source_url": "",
+        "source_name": "",
+        "application_url": "",
+        "verification_status": "unverified",
+        "eligibility_verification_status": "unverified",
+        "is_active": True,
+        "min_age": None,
+        "max_age": None,
+        "education": None,
+        "employment_status": None,
+        "max_annual_income": None,
+        "application_deadline": None,
+        "verified_at": None,
+    }
+
+    with TestClient(app) as client:
+        registered = client.post("/api/auth/register", json={
+            "email": "admin@example.com", "password": "correct-horse-battery-staple",
+        })
+        assert registered.status_code == 201
+        login_response = client.post("/api/auth/login", json={
+            "email": "admin@example.com", "password": "correct-horse-battery-staple",
+        })
+        token = login_response.json()["access_token"]
+        response = client.post("/api/schemes", json=payload, headers={"Authorization": f"Bearer {token}"})
+
+        assert response.status_code == 201, response.text
+        created = response.json()
+        assert created["name"] == payload["name"]
+        assert created["slug"]
+        assert created["beneficiary_groups"] == payload["beneficiary_groups"]
+
+        duplicate = client.post("/api/schemes", json=payload, headers={"Authorization": f"Bearer {token}"})
+        assert duplicate.status_code == 201, duplicate.text
+        assert duplicate.json()["slug"] != created["slug"]

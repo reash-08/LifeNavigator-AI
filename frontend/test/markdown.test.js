@@ -259,6 +259,26 @@ A comprehensive national initiative to provide holistic educational and economic
   assert.ok(!html.includes('**'));
 });
 
+test('renderAssistantAnswer keeps multi-scheme grounded answers scannable and escapes untrusted names', () => {
+  const answer = `
+# Scheme One <img src=x onerror=alert(1)>
+## Benefits
+- Recorded benefit from the official source.
+
+# Scheme Two
+## Required Documents
+- Documents listed by the source.
+`;
+
+  const html = renderAssistantAnswer(answer);
+  assert.ok(html.includes('scheme-block-title'));
+  assert.ok(html.includes('badge-benefits'));
+  assert.ok(html.includes('badge-docs'));
+  assert.ok(html.includes('Recorded benefit from the official source.'));
+  assert.ok(html.includes('&lt;img src=x onerror=alert(1)&gt;'));
+  assert.ok(!html.includes('<img src=x'));
+});
+
 test('renderAssistantAnswer supports bulleted metadata chips and long titles without splitting inline hashes', () => {
   const withBullets = `
 # Pradhan Mantri Awas Yojana - Housing for All (Urban / Rural Unified Mission)

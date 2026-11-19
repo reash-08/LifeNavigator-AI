@@ -122,7 +122,16 @@ def run_agent(db: Session, *, query: str, profile: UserProfile | None,
         # Explain structured outcomes from the engine; evidence remains separately cited.
         answer = "Eligibility was checked against recorded structured rules. See each scheme's result and reasons; missing profile fields may prevent confirmation."
     elif enough:
-        evidence = [{"text": source.text, "source_name": source.source_name} for source in sources if source.source_url]
+        evidence = [
+            {
+                "text": source.text,
+                "source_name": source.source_name,
+                "scheme_name": source.scheme_name,
+                "kind": source.kind,
+            }
+            for source in sources
+            if source.source_url
+        ]
         answer = provider.explain(question=query, evidence=evidence)
     else:
         answer = "I could not find enough source-backed information to answer this request. Try adding the benefit type, your state, or a scheme name."

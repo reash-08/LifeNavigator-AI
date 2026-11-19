@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
 from app.database.connection import get_db
@@ -27,20 +28,25 @@ def create_scheme(
     _: object = Depends(get_current_admin),
     db: Session = Depends(get_db),
 ):
-    scheme = Scheme(
-        **scheme_data.model_dump()
-    )
-
-    if not scheme.slug:
-        juris = (scheme.state or "CENTRAL").upper()
+    dump = scheme_data.model_dump()
+    requested_slug = dump.get("slug")
+    if not requested_slug:
+        jurisdiction = (dump.get("state") or "CENTRAL").upper()
         existing_slugs = {
             s[0] for s in db.query(Scheme.slug).filter(
                 Scheme.is_active.is_(True),
-                func.coalesce(Scheme.state, "CENTRAL") == (scheme.state or "CENTRAL")
+                func.coalesce(Scheme.state, "CENTRAL") == (dump.get("state") or "CENTRAL")
             ).all() if s[0]
         }
-        base = generate_base_slug(scheme.name)
-        scheme.slug = resolve_slug_collision(base, existing_slugs, name=scheme.name, jurisdiction=juris, ministry=scheme.ministry)
+        base = generate_base_slug(dump["name"])
+        dump["slug"] = resolve_slug_collision(
+            base,
+            existing_slugs,
+            name=dump["name"],
+            jurisdiction=jurisdiction,
+            ministry=dump.get("ministry"),
+        )
+    scheme = Scheme(**dump)
 
     if scheme.source_name and scheme.source_url and is_official_source_url(scheme.source_url):
         source = db.query(SchemeSource).filter_by(source_name=scheme.source_name, source_url=scheme.source_url).first()
@@ -57,8 +63,15 @@ def create_scheme(
             db.flush()
         scheme.source_id = source.id
 
-    db.add(scheme)
-    db.commit()
+    try:
+        db.add(scheme)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A scheme with this identifier already exists in this jurisdiction. Refresh the list and try again.",
+        )
     db.refresh(scheme)
 
     return scheme
